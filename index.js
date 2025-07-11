@@ -5,11 +5,12 @@ const xlsx = require('xlsx');
 
 const COOKIE_PATH = path.resolve(__dirname, 'cookies.json');
 
-(async () => {
+async function main() {
   const downloadPath = path.resolve(__dirname, 'downloads');
   if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
 
   const browser = await puppeteer.launch({
+    executablePath: puppeteer.executablePath(),
     headless: false,
     defaultViewport: null,
     args: [
@@ -48,13 +49,11 @@ const COOKIE_PATH = path.resolve(__dirname, 'cookies.json');
   }
 
   try {
-    // Задержка на 1 секунду (аналог page.waitForTimeout)
     await new Promise(resolve => setTimeout(resolve, 1000));
   
     const result = await page.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll('button'));
       const declineButton = buttons.find(btn =>
-        btn.textContent.trim().toLowerCase().includes("don't show again") ||
         btn.textContent.trim().toLowerCase().includes("больше не показывать")
       );
       if (declineButton) {
@@ -74,73 +73,98 @@ const COOKIE_PATH = path.resolve(__dirname, 'cookies.json');
   }
 
 
+  async function clickUntilPopoverOpens(page) {
+    const containerSelector = '.index_buttons_GAN3c';
+    const popoverSelector = '.popover-module_fixReferenceSize__16BR';
+    const buttonText = 'Скачать отчёт';
+  
+    await page.waitForSelector(containerSelector);
+  
+    let ariaExpanded = await page.$eval(popoverSelector, el => el.getAttribute('aria-expanded'));
+    let attempts = 0;
+    const maxAttempts = 10;
+  
+    while (ariaExpanded !== 'true') {
+      if (attempts >= maxAttempts) {
+        throw new Error('Попап не открылся после максимального количества попыток');
+      }
+      attempts++;
+  
+      const buttons = await page.$$(`${containerSelector} button`);
+  
+      let clicked = false;
+  
+      for (const btn of buttons) {
+        const text = await page.evaluate(el => el.innerText.trim(), btn);
+        if (text.includes(buttonText)) {
+          await btn.click();
+          console.log('Кликнули на кнопку "Скачать отчёт", попытка #' + attempts);
+          clicked = true;
+          break;
+        }
+      }
+      if (attempts == 2){
+        return
+      }
+      if (!clicked) {
+        throw new Error('Кнопки "Скачать отчёт" не найдены в контейнере');
+      }
+  
+      await new Promise(resolve => setTimeout(resolve, 1000));
+  
+      ariaExpanded = await page.$eval(popoverSelector, el => el.getAttribute('aria-expanded'));
+      console.log('Текущее aria-expanded:', ariaExpanded);
+    }
+  
+    console.log('Попап открыт (aria-expanded="true")');
+  }
+  
+  // Используй эту функцию в нужном месте твоего кода
+  await clickUntilPopoverOpens(page);
+  
+  try {
+    // await page.waitForSelector('.modal-module_modalContent_', { timeout: 15000 });
+    // console.log('✅ Попап загрузки отчёта появился');
 
-// 👉 Ищем и нажимаем "Скачать отчёт"
-console.log('👉 Ищем и нажимаем "Скачать отчёт"...');
+    const radioByProducts = await page.waitForSelector('input[type="radio"][value="ByProducts"]');
+    await radioByProducts.click();
+    console.log('✅ Выбран вариант "По товарам"');
 
-// Ждём, пока появится кнопка с нужным текстом
-await page.waitForXPath(
-  "//button[.//span[text()='Скачать отчёт'] or .//span[text()='Download report']]",
-  { timeout: 10000 }
-);
+    const buttons = await page.$$('.index_downloadReportConfirmButton_2P5UK');
 
-// Получаем и нажимаем кнопку
-const [downloadBtn] = await page.$x(
-  "//button[.//span[text()='Скачать отчёт'] or .//span[text()='Download report']]"
-);
-if (downloadBtn) {
-  await downloadBtn.click();
-  console.log('✅ Кнопка "Скачать отчёт" нажата');
-} else {
-  console.error('❌ Не удалось найти кнопку "Скачать отчёт"');
+    let foundDownloadButton = false;
+    for (const btn of buttons) {
+      const text = await page.evaluate(el => el.textContent.trim(), btn);
+      if (text === 'Скачать') {
+        await btn.click();
+        console.log('✅ Кнопка "Скачать" нажата');
+        foundDownloadButton = true;
+        break;
+      }
+    }
+
+    if (!foundDownloadButton) {
+      throw new Error('Не найдена кнопка "Скачать" в попапе');
+    }
+
+    console.log('⏳ Ожидаем завершения загрузки...');
+    await new Promise(resolve => setTimeout(resolve, 6000));
+
+    const downloadedFileName = fs.readdirSync(downloadPath)
+      .filter(file => file.endsWith('.xlsx'))
+      .sort((a, b) => {
+        return fs.statSync(path.join(downloadPath, b)).mtime.getTime() -
+               fs.statSync(path.join(downloadPath, a)).mtime.getTime();
+      })[0];
+
+    if (!downloadedFileName) {
+      throw new Error('Загрузка не удалась — XLSX файл не найден');
+    }
+
+    console.log('✅ Отчёт успешно загружен:', downloadedFileName);
+  } catch (err) {
+    console.log('❌ Ошибка при загрузке отчёта:', err.message);
+  }
 }
 
-  // Выбираем "По товарам"
-  console.log('👉 Выбираем "По товарам"...');
-  await page.waitForSelector('label input[value="ByProducts"]', { timeout: 10000 });
-  await page.click('label input[value="ByProducts"]');
-
-  // Нажимаем финальную кнопку "Скачать"
-  console.log('👉 Нажимаем "Скачать"...');
-  await page.waitForSelector('span:text("Скачать")', { timeout: 10000 });
-  await page.evaluate(() => {
-    const buttons = Array.from(document.querySelectorAll('button'));
-    const target = buttons.find(btn =>  {
-      const text = btn.textContent.trim().toLowerCase();
-      return text.includes('скачать') || text.includes('download');
-    });
-    // const target = buttons.find(btn => btn.textContent.trim() === 'Скачать');
-    if (target) target.click();
-  });
- 
-
-  // Ждём загрузки файла
-  console.log('⏳ Ждём загрузку...');
-  await page.waitForTimeout(15000);
-
-  // Поиск последнего .xlsx файла
-  const files = fs.readdirSync(downloadPath).filter(f => f.endsWith('.xlsx'));
-  if (files.length === 0) {
-    console.error('❌ Excel файл не найден');
-    await browser.close();
-    return;
-  }
-
-  const latestFile = files
-    .map(f => ({ name: f, time: fs.statSync(path.join(downloadPath, f)).mtime.getTime() }))
-    .sort((a, b) => b.time - a.time)[0].name;
-
-  const filePath = path.join(downloadPath, latestFile);
-  console.log(`✅ Найден файл: ${latestFile}`);
-
-  // Чтение Excel и парсинг в JSON
-  const workbook = xlsx.readFile(filePath);
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const json = xlsx.utils.sheet_to_json(sheet);
-
-  const jsonPath = path.join(__dirname, 'parsed.json');
-  fs.writeFileSync(jsonPath, JSON.stringify(json, null, 2), 'utf8');
-  console.log(`📦 JSON сохранён: ${jsonPath}`);
-
-  await browser.close();
-})();
+main().catch(console.error);
