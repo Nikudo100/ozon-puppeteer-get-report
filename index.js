@@ -1,27 +1,40 @@
-const puppeteer = require('puppeteer');
-const fs = require('fs');
-const path = require('path');
-const xlsx = require('xlsx');
-const { pressAndSaveFile, clickUntilPopoverOpens, handleCookies, closePopup, initializeBrowser } = require('./func');
+import path from 'path';
+
+import {
+  pressAndSaveFile,
+  clickUntilPopoverOpens,
+  handleCookies,
+  closePopup,
+  initializeBrowser,
+  switchKabinet,
+  checkAndSwitchCabinet,
+  chekKabinet
+} from './func.js'; // добавлен .js
+// 🔄 Список кабинетов
+const cabinets = ['DiDesign', 'Stik.Store'];
+
+const COOKIE_PATH = path.resolve('./cookies.json');
+
+const { browser, page } = await initializeBrowser();
+
+await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
+  waitUntil: 'networkidle2',
+});
+await handleCookies(page, COOKIE_PATH);
 
 
-const COOKIE_PATH = path.resolve(__dirname, 'cookies.json');
+await closePopup(page);
+let { kabinet, kabinetTitle } = await chekKabinet(page)
+await clickUntilPopoverOpens(page);
+await pressAndSaveFile(page, kabinetTitle);
+// Get the target cabinet name that is different from current one
+const targetName = cabinets.find(cabinet => cabinet !== kabinetTitle);
 
-async function main() {
+// переключаем кабинеты
+await checkAndSwitchCabinet(page, targetName);
 
-  initializeBrowser()
+await clickUntilPopoverOpens(page);
+await pressAndSaveFile(page, targetName);
 
-  await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
-    waitUntil: 'networkidle2',
-  });
-
-  handleCookies(page, COOKIE_PATH)
-
-  closePopup(page)
-
-  await clickUntilPopoverOpens(page);
-
-  pressAndSaveFile(page);
-}
-
-main().catch(console.error);
+console.log('✅ Готово. Закрываем браузер...');
+await browser.close();
