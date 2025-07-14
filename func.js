@@ -1,25 +1,63 @@
 import fs from 'fs';
 import path from 'path';
 import puppeteer from 'puppeteer';
+import { SocksProxyAgent } from 'socks-proxy-agent';
+import https from 'https';
 
-export async function initializeBrowser() {
+
+// export async function initializeBrowser() {
+//   const downloadPath = path.resolve('./downloads');
+//   if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
+
+//   const browser = await puppeteer.launch({
+//     executablePath: puppeteer.executablePath(),
+//     headless: false,
+//     defaultViewport: null,
+//     args: [
+//       '--window-size=1400,800',
+//       '--disable-dev-shm-usage',
+//       '--no-sandbox',
+//       '--disable-setuid-sandbox',
+//       '--disable-gpu'
+//     ]
+//   });
+
+//   const [page] = await browser.pages();
+
+//   const client = await page.target().createCDPSession();
+//   await client.send('Page.setDownloadBehavior', {
+//     behavior: 'allow',
+//     downloadPath: downloadPath,
+//   });
+
+//   return { browser, page };
+// }
+
+
+export async function initializeBrowser(proxy) {
   const downloadPath = path.resolve('./downloads');
   if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
 
   const browser = await puppeteer.launch({
-    executablePath: puppeteer.executablePath(),
     headless: false,
     defaultViewport: null,
     args: [
+      `--proxy-server=socks5://${proxy.host}:${proxy.port}`, // ✅ только хост:порт
       '--window-size=1400,800',
       '--disable-dev-shm-usage',
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-gpu'
-    ]
+      '--disable-gpu',
+    ],
   });
 
   const [page] = await browser.pages();
+
+  // Прокси-авторизация отдельно:
+  await page.authenticate({
+    username: proxy.username,
+    password: proxy.password,
+  });
 
   const client = await page.target().createCDPSession();
   await client.send('Page.setDownloadBehavior', {
@@ -28,6 +66,65 @@ export async function initializeBrowser() {
   });
 
   return { browser, page };
+}
+
+export async function checkSocks5Proxy({ host, port, username, password }) {
+  const proxyUrl = `socks5h://${username}:${password}@${host}:${port}`;
+  const agent = new SocksProxyAgent(proxyUrl);
+
+  const options = {
+    hostname: 'api64.ipify.org', // Use IPv6 compatible endpoint
+    port: 443,
+    path: '/',  // Simplified path without format parameter
+    method: 'GET',
+    agent,
+    timeout: 5000,
+    headers: {
+      'Accept': 'text/plain' // Request plain text response
+    }
+  };
+
+  return new Promise((resolve) => {
+    const req = https.request(options, (res) => {
+      // Check if response status is successful
+      if (res.statusCode !== 200) {
+        console.error('Proxy check failed: Invalid status code', res.statusCode);
+        resolve(false);
+        return;
+      }
+
+      let data = '';
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+
+      res.on('end', () => {
+        // Validate IP address format using regex
+        const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+        if (ipRegex.test(data.trim())) {
+          console.log('Current IP address:', data.trim());
+          resolve(true);
+        } else {
+          console.error('Invalid IP address format received');
+          resolve(false);
+        }
+      });
+    });
+
+    req.on('error', (err) => {
+      console.error('Proxy check failed:', err.message);
+      resolve(false);
+    });
+
+    req.on('timeout', () => {
+      console.error('Proxy check timed out');
+      req.destroy();
+      resolve(false);
+    });
+
+    req.end();
+  });
 }
 
 export async function handleCookies(page, COOKIE_PATH) {
