@@ -39,7 +39,7 @@ export async function initializeBrowser(proxy) {
   if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
 
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: 'new',
     defaultViewport: null,
     args: [
       `--proxy-server=socks5://${proxy.host}:${proxy.port}`, // ✅ только хост:порт
