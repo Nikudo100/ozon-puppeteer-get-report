@@ -25,42 +25,38 @@ const proxy = {
   password: process.env.PROXY_PASSWORD || ''
 };
 
-// Validate proxy configuration
-if (!proxy.host || !proxy.port || !proxy.username || !proxy.password) {
-  console.error('❌ Missing or invalid proxy configuration in environment variables');
-  process.exit(1);
-}
 
 console.log('proxy', proxy);
 
 const COOKIE_PATH = path.resolve('./cookies.json');
 
-const isProxyOk = await checkSocks5Proxy(proxy);
-if (!isProxyOk) {
-  console.error('❌ Прокси SOCKS5 недоступен. Прерывание...');
-  process.exit(1);
-}
+(async () => {
+  const { browser, page } = await initializeBrowser(proxy);
 
-const { browser, page } = await initializeBrowser(proxy);
+  await page.goto('https://httpbin.org/ip', { waitUntil: 'domcontentloaded' });
+  const content = await page.content();
+  console.log('IP page content:', content);
 
-await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
-  waitUntil: 'networkidle2',
-});
-await handleCookies(page, COOKIE_PATH);
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
+    waitUntil: 'domcontentloaded',
+  });
+  await handleCookies(page, COOKIE_PATH);
 
 
-await closePopup(page);
-let { kabinet, kabinetTitle } = await chekKabinet(page)
-await clickUntilPopoverOpens(page);
-await pressAndSaveFile(page, kabinetTitle);
-// Get the target cabinet name that is different from current one
-const targetName = cabinets.find(cabinet => cabinet !== kabinetTitle);
+  await closePopup(page);
+  let { kabinet, kabinetTitle } = await chekKabinet(page)
+  await clickUntilPopoverOpens(page);
+  await pressAndSaveFile(page, kabinetTitle);
+  // Get the target cabinet name that is different from current one
+  const targetName = cabinets.find(cabinet => cabinet !== kabinetTitle);
 
-// переключаем кабинеты
-await checkAndSwitchCabinet(page, targetName);
+  // переключаем кабинеты
+  await checkAndSwitchCabinet(page, targetName);
 
-await clickUntilPopoverOpens(page);
-await pressAndSaveFile(page, targetName);
+  await clickUntilPopoverOpens(page);
+  await pressAndSaveFile(page, targetName);
 
-console.log('✅ Готово. Закрываем браузер...');
-await browser.close();
+  console.log('✅ Готово. Закрываем браузер...');
+// await browser.close();
+})();
