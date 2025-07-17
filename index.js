@@ -32,13 +32,16 @@ const COOKIE_PATH = path.resolve('./cookies.json');
 
 (async () => {
   const { browser, page } = await initializeBrowser(proxy);
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
-    waitUntil: 'domcontentloaded',
-  });
+  // await new Promise(resolve => setTimeout(resolve, 1000));
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
   await handleCookies(page, COOKIE_PATH);
+  await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
+    waitUntil: 'networkidle2',
+  });
   await new Promise(resolve => setTimeout(resolve, 3000));
+  await page.screenshot({ path: './debug/before-wait.png' });
   await closePopup(page);
+  await page.screenshot({ path: './debug/before-wait1.png' });
   let { kabinet, kabinetTitle } = await chekKabinet(page)
   await clickUntilPopoverOpens(page);
   await pressAndSaveFile(page, kabinetTitle);
@@ -52,5 +55,5 @@ const COOKIE_PATH = path.resolve('./cookies.json');
   await pressAndSaveFile(page, targetName);
 
   console.log('✅ Готово. Закрываем браузер...');
-// await browser.close();
+await browser.close();
 })();
