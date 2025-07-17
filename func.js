@@ -6,6 +6,34 @@ import fs from 'fs';
 import path from 'path';
 
 
+// инициализация без прокси, остальные с прокси
+export async function initializeBrowser(proxy= null) {
+  const downloadPath = path.resolve('./downloads');
+  if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
+
+  const browser = await puppeteer.launch({
+    executablePath: puppeteer.executablePath(),
+    headless: true,
+    defaultViewport: null,
+    args: [
+      '--window-size=1400,800',
+      '--disable-dev-shm-usage',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu'
+    ]
+  });
+
+  const [page] = await browser.pages();
+
+  const client = await page.target().createCDPSession();
+  await client.send('Page.setDownloadBehavior', {
+    behavior: 'allow',
+    downloadPath: downloadPath,
+  });
+
+  return { browser, page };
+}
 
 // export async function initializeBrowser(proxy) {
 //   const downloadPath = path.resolve('./downloads');
@@ -286,33 +314,9 @@ export async function handleCookies(page, COOKIE_PATH) {
 //   return { browser, page };
 // }
 
-export async function initializeBrowser(proxy= null) {
-  const downloadPath = path.resolve('./downloads');
-  if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
 
-  const browser = await puppeteer.launch({
-    executablePath: puppeteer.executablePath(),
-    headless: false,
-    defaultViewport: null,
-    args: [
-      '--window-size=1400,800',
-      '--disable-dev-shm-usage',
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-gpu'
-    ]
-  });
 
-  const [page] = await browser.pages();
 
-  const client = await page.target().createCDPSession();
-  await client.send('Page.setDownloadBehavior', {
-    behavior: 'allow',
-    downloadPath: downloadPath,
-  });
-
-  return { browser, page };
-}
 export async function closePopup(page) {
   try {
     await new Promise(resolve => setTimeout(resolve, 1000));
