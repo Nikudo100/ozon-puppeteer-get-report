@@ -1,10 +1,12 @@
 // func.js
 import puppeteer from 'puppeteer';
+import iconv from 'iconv-lite';
 import fetch from 'node-fetch';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import fs from 'fs';
 import path from 'path';
-
+import XLSX from 'xlsx'
+import dayjs from 'dayjs';
 
 // инициализация без прокси, остальные с прокси
 export async function initializeBrowser(proxy= null) {
@@ -529,4 +531,128 @@ export async function pressAndSaveFile(page, kabinetTitle) {
   }
 }
 
+// Функция для преобразования дат из формата dd.mm.yyyy в yyyy-mm-dd
+function formatDate(dateValue) {
+  if (typeof dateValue === 'number') {
+    const excelDate = Math.round((dateValue - 25569) * 86400 * 1000);
+    const dateObj = new Date(excelDate);
+    return dateObj.toISOString().slice(0, 10);
+  }
+
+  if (typeof dateValue === 'string') {
+    const parts = dateValue.split(',').map(part => part.trim());
+    const day = parts[0].padStart(2, '0');
+    const month = parts[1].padStart(2, '0');
+    const year = parts[2];
+    return `${year}-${month}-${day}`;
+  }
+
+  throw new Error(`Невозможно обработать дату: ${JSON.stringify(dateValue)}`);
+}
+
+// Вспомогательная функция для чтения существующих данных
+function readExistingData(jsonPath) {
+  try {
+    const existingData = require(jsonPath);
+    const index = {};
+    existingData.forEach(item => {
+      const key = `${item.date}|${item.sku}|${item.warehouse}`;
+      index[key] = item;
+    });
+    return index;
+  } catch (error) {
+    return {}; // Возвращаем пустой индекс, если файл не найден или пуст
+  }
+}
+
+// Основная функция парсинга
+export async function parseExcelToJson() {
+  try {
+
+    let directoryPath = './downloads';
+    // Загружаем существующие данные
+    const stickIndex = readExistingData(path.join(directoryPath, 'Stick_data.json'));
+    const diIndex = readExistingData(path.join(directoryPath, 'Di_data.json'));
+
+    // Массивы для новых данных
+    const newStickData = [];
+    const newDiData = [];
+
+    // Список всех файлов в директории
+    const files = fs.readdirSync(directoryPath);
+
+    // Обработка каждого файла
+    for (const file of files) {
+      if (path.extname(file) !== '.xlsx') continue;
+
+      // Тип магазина определяется по названию файла
+      const storeType = file.includes('_Stik_Store') ? 'stick' : 'di';
+      const filePath = path.join(directoryPath, file);
+
+      // Чтение файла
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+
+      // Преобразование листа в массив объектов
+      const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      // Обработка каждой строки
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        // if (i === 100) break;
+
+        // Создание объекта с полями
+        const parsedRow = {
+          date: formatDate(row[0]),
+          sku: row[1],
+          article: row[2],
+          category: row[3],
+          warehouse: row[4],
+          productSign: row[5],
+          totalVolumeInMilliliters: Number(row[6]) || null,
+          quantityOfItems: Number(row[7]) || null,
+          paidVolumeInMilliliters: Number(row[8]) || null,
+          numberPaidItems: Number(row[9]) || null,
+          placementCost: Number(row[10]) || null
+        };
+
+        // Генерируем уникальный ключ
+        const uniqueKey = `${parsedRow.date}|${parsedRow.sku}|${parsedRow.warehouse}`;
+
+        // Проверяем существование записи
+        if ((storeType === 'stick' && !stickIndex[uniqueKey]) ||
+            (storeType === 'di' && !diIndex[uniqueKey])) {
+          console.log(`Новая запись обнаружена: ${uniqueKey}`);
+          if (storeType === 'stick') {
+            newStickData.push(parsedRow);
+          } else {
+            newDiData.push(parsedRow);
+          }
+        } else {
+          console.log(`Пропущено дублирование: ${uniqueKey}`);
+        }
+      }
+    }
+
+    // Объединяем старые и новые данные
+    const updatedStickData = Object.values(stickIndex).concat(newStickData);
+    const updatedDiData = Object.values(diIndex).concat(newDiData);
+
+    const directoryPathForSave = './json/'
+    // Сохраняем объединённые данные обратно в JSON-файлы
+    if (updatedStickData.length > 0) {
+      fs.writeFileSync(path.join(directoryPathForSave, 'Stick_data.json'), JSON.stringify(updatedStickData, null, 2));
+      console.log('Данные для Stick дополнены и сохранены.');
+    }
+
+    if (updatedDiData.length > 0) {
+      fs.writeFileSync(path.join(directoryPathForSave, 'Di_data.json'), JSON.stringify(updatedDiData, null, 2));
+      console.log('Данные для Di дополнены и сохранены.');
+    }
+
+  } catch (error) {
+    console.error('Ошибка при обработке файлов:', error);
+  }
+}
 

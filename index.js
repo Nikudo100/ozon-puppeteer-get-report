@@ -8,7 +8,8 @@ import {
   switchKabinet,
   checkAndSwitchCabinet,
   chekKabinet,
-  checkSocks5Proxy
+  checkSocks5Proxy,
+  parseAllReportsToJson
 } from './func.js'; // добавлен .js
 // 🔄 Список кабинетов
 const cabinets = ['DiDesign', 'Stik.Store'];
@@ -52,8 +53,12 @@ const COOKIE_PATH = path.resolve('./cookies.json');
   await checkAndSwitchCabinet(page, targetName);
 
   await clickUntilPopoverOpens(page);
+
   await pressAndSaveFile(page, targetName);
 
   console.log('✅ Готово. Закрываем браузер...');
-await browser.close();
+  await browser.close();
+
+  console.log('✅ Парсим файлы...');
+  parseExcelToJson();
 })();
