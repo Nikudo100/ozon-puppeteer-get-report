@@ -26,23 +26,17 @@ const proxy = {
 };
 
 
-console.log('proxy', proxy);
+// console.log('proxy', proxy);
 
 const COOKIE_PATH = path.resolve('./cookies.json');
 
 (async () => {
   const { browser, page } = await initializeBrowser(proxy);
 
-  // await page.goto('https://httpbin.org/ip', { waitUntil: 'domcontentloaded' });
-  // const content = await page.content();
-  // console.log('IP page content:', content);
-
-  // await new Promise(resolve => setTimeout(resolve, 2000));
   await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
     waitUntil: 'domcontentloaded',
   });
   await handleCookies(page, COOKIE_PATH);
-
 
   await closePopup(page);
   let { kabinet, kabinetTitle } = await chekKabinet(page)
