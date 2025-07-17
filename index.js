@@ -32,12 +32,12 @@ const COOKIE_PATH = path.resolve('./cookies.json');
 
 (async () => {
   const { browser, page } = await initializeBrowser(proxy);
-
+  await new Promise(resolve => setTimeout(resolve, 1000));
   await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
     waitUntil: 'domcontentloaded',
   });
   await handleCookies(page, COOKIE_PATH);
-
+  await new Promise(resolve => setTimeout(resolve, 3000));
   await closePopup(page);
   let { kabinet, kabinetTitle } = await chekKabinet(page)
   await clickUntilPopoverOpens(page);
