@@ -38,7 +38,7 @@ const COOKIE_PATH = path.resolve('./cookies.json');
   await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
     waitUntil: 'networkidle2',
   });
-  await new Promise(resolve => setTimeout(resolve, 3000));
+
   await page.screenshot({ path: './debug/before-wait.png' });
   await closePopup(page);
   await page.screenshot({ path: './debug/before-wait1.png' });
