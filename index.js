@@ -8,8 +8,8 @@ import {
   switchKabinet,
   checkAndSwitchCabinet,
   chekKabinet,
-  checkSocks5Proxy,
-  parseAllReportsToJson
+  parseExcelToJson,
+  checkSocks5Proxy
 } from './func.js'; // добавлен .js
 // 🔄 Список кабинетов
 const cabinets = ['DiDesign', 'Stik.Store'];

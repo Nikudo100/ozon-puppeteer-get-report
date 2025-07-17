@@ -551,15 +551,11 @@ function formatDate(dateValue) {
 }
 
 // Вспомогательная функция для чтения существующих данных
+// Вспомогательная функция для чтения существующих данных
 function readExistingData(jsonPath) {
   try {
     const existingData = require(jsonPath);
-    const index = {};
-    existingData.forEach(item => {
-      const key = `${item.date}|${item.sku}|${item.warehouse}`;
-      index[key] = item;
-    });
-    return index;
+    return existingData;
   } catch (error) {
     return {}; // Возвращаем пустой индекс, если файл не найден или пуст
   }
@@ -568,15 +564,16 @@ function readExistingData(jsonPath) {
 // Основная функция парсинга
 export async function parseExcelToJson() {
   try {
+    const directoryPath = './downloads';
+    const directoryPathForSave = './json/';
 
-    let directoryPath = './downloads';
     // Загружаем существующие данные
-    const stickIndex = readExistingData(path.join(directoryPath, 'Stick_data.json'));
-    const diIndex = readExistingData(path.join(directoryPath, 'Di_data.json'));
+    const stickIndex = readExistingData(path.join(directoryPathForSave, 'Stick_data.json'));
+    const diIndex = readExistingData(path.join(directoryPathForSave, 'Di_data.json'));
 
-    // Массивы для новых данных
-    const newStickData = [];
-    const newDiData = [];
+    // Списки для новых данных
+    const newStickData = {};
+    const newDiData = {};
 
     // Список всех файлов в директории
     const files = fs.readdirSync(directoryPath);
@@ -600,7 +597,6 @@ export async function parseExcelToJson() {
       // Обработка каждой строки
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
-        // if (i === 100) break;
 
         // Создание объекта с полями
         const parsedRow = {
@@ -621,13 +617,15 @@ export async function parseExcelToJson() {
         const uniqueKey = `${parsedRow.date}|${parsedRow.sku}|${parsedRow.warehouse}`;
 
         // Проверяем существование записи
-        if ((storeType === 'stick' && !stickIndex[uniqueKey]) ||
-            (storeType === 'di' && !diIndex[uniqueKey])) {
+        if (
+          (storeType === 'stick' && !stickIndex[uniqueKey]) ||
+          (storeType === 'di' && !diIndex[uniqueKey])
+        ) {
           console.log(`Новая запись обнаружена: ${uniqueKey}`);
           if (storeType === 'stick') {
-            newStickData.push(parsedRow);
+            newStickData[uniqueKey] = parsedRow;
           } else {
-            newDiData.push(parsedRow);
+            newDiData[uniqueKey] = parsedRow;
           }
         } else {
           console.log(`Пропущено дублирование: ${uniqueKey}`);
@@ -636,21 +634,25 @@ export async function parseExcelToJson() {
     }
 
     // Объединяем старые и новые данные
-    const updatedStickData = Object.values(stickIndex).concat(newStickData);
-    const updatedDiData = Object.values(diIndex).concat(newDiData);
+    const updatedStickData = { ...stickIndex, ...newStickData };
+    const updatedDiData = { ...diIndex, ...newDiData };
 
-    const directoryPathForSave = './json/'
     // Сохраняем объединённые данные обратно в JSON-файлы
-    if (updatedStickData.length > 0) {
-      fs.writeFileSync(path.join(directoryPathForSave, 'Stick_data.json'), JSON.stringify(updatedStickData, null, 2));
+    if (Object.keys(updatedStickData).length > 0) {
+      fs.writeFileSync(
+        path.join(directoryPathForSave, 'Stick_data.json'),
+        JSON.stringify(updatedStickData, null, 2)
+      );
       console.log('Данные для Stick дополнены и сохранены.');
     }
 
-    if (updatedDiData.length > 0) {
-      fs.writeFileSync(path.join(directoryPathForSave, 'Di_data.json'), JSON.stringify(updatedDiData, null, 2));
+    if (Object.keys(updatedDiData).length > 0) {
+      fs.writeFileSync(
+        path.join(directoryPathForSave, 'Di_data.json'),
+        JSON.stringify(updatedDiData, null, 2)
+      );
       console.log('Данные для Di дополнены и сохранены.');
     }
-
   } catch (error) {
     console.error('Ошибка при обработке файлов:', error);
   }
