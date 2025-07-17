@@ -5,56 +5,58 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 import fs from 'fs';
 import path from 'path';
 
-export async function initializeBrowser(proxy) {
-  const downloadPath = path.resolve('./downloads');
-  if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
-
-  const proxyUrl = `socks5://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`;
-  const agent = new SocksProxyAgent(proxyUrl);
-
-  const browser = await puppeteer.launch({
-    // headless: false,
-    args: ['--window-size=1400,800,`--proxy-server=socks5://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`,'],
-  });
-
-  const [page] = await browser.pages();
-
-  await page.setRequestInterception(true);
-
-  page.on('request', async (request) => {
-    const url = request.url();
-
-    try {
-      const response = await fetch(url, {
-        method: request.method(),
-        headers: request.headers(),
-        body: request.postData(),
-        agent,
-      });
-
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
 
 
-      request.respond({
-        status: response.status,
-        headers: Object.fromEntries(response.headers.entries()),
-        body: buffer,
-      });
-    } catch (err) {
-      console.error('Fetch proxy error:', err.message);
-      request.abort();
-    }
-  });
+// export async function initializeBrowser(proxy) {
+//   const downloadPath = path.resolve('./downloads');
+//   if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
 
-  const client = await page.target().createCDPSession();
-  await client.send('Page.setDownloadBehavior', {
-    behavior: 'allow',
-    downloadPath,
-  });
+//   const proxyUrl = `socks5://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`;
+//   const agent = new SocksProxyAgent(proxyUrl);
 
-  return { browser, page };
-}
+//   const browser = await puppeteer.launch({
+//     // headless: false,
+//     args: ['--window-size=1400,800,`--proxy-server=socks5://${proxy.username}:${proxy.password}@${proxy.host}:${proxy.port}`,'],
+//   });
+
+//   const [page] = await browser.pages();
+
+//   await page.setRequestInterception(true);
+
+//   page.on('request', async (request) => {
+//     const url = request.url();
+
+//     try {
+//       const response = await fetch(url, {
+//         method: request.method(),
+//         headers: request.headers(),
+//         body: request.postData(),
+//         agent,
+//       });
+
+//     const arrayBuffer = await response.arrayBuffer();
+//     const buffer = Buffer.from(arrayBuffer);
+
+
+//       request.respond({
+//         status: response.status,
+//         headers: Object.fromEntries(response.headers.entries()),
+//         body: buffer,
+//       });
+//     } catch (err) {
+//       console.error('Fetch proxy error:', err.message);
+//       request.abort();
+//     }
+//   });
+
+//   const client = await page.target().createCDPSession();
+//   await client.send('Page.setDownloadBehavior', {
+//     behavior: 'allow',
+//     downloadPath,
+//   });
+
+//   return { browser, page };
+// }
 
 
 
@@ -175,8 +177,6 @@ export async function initializeBrowser(proxy) {
 //   return { browser, page };
 // }
 
-
-
 export async function checkSocks5Proxy({ host, port, username, password }) {
   const proxyUrl = `socks5h://${username}:${password}@${host}:${port}`;
   const agent = new SocksProxyAgent(proxyUrl);
@@ -286,33 +286,33 @@ export async function handleCookies(page, COOKIE_PATH) {
 //   return { browser, page };
 // }
 
-// export async function initializeBrowser() {
-//   const downloadPath = path.resolve('./downloads');
-//   if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
+export async function initializeBrowser(proxy= null) {
+  const downloadPath = path.resolve('./downloads');
+  if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
 
-//   const browser = await puppeteer.launch({
-//     executablePath: puppeteer.executablePath(),
-//     headless: false,
-//     defaultViewport: null,
-//     args: [
-//       '--window-size=1400,800',
-//       '--disable-dev-shm-usage',
-//       '--no-sandbox',
-//       '--disable-setuid-sandbox',
-//       '--disable-gpu'
-//     ]
-//   });
+  const browser = await puppeteer.launch({
+    executablePath: puppeteer.executablePath(),
+    headless: false,
+    defaultViewport: null,
+    args: [
+      '--window-size=1400,800',
+      '--disable-dev-shm-usage',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu'
+    ]
+  });
 
-//   const [page] = await browser.pages();
+  const [page] = await browser.pages();
 
-//   const client = await page.target().createCDPSession();
-//   await client.send('Page.setDownloadBehavior', {
-//     behavior: 'allow',
-//     downloadPath: downloadPath,
-//   });
+  const client = await page.target().createCDPSession();
+  await client.send('Page.setDownloadBehavior', {
+    behavior: 'allow',
+    downloadPath: downloadPath,
+  });
 
-//   return { browser, page };
-// }
+  return { browser, page };
+}
 export async function closePopup(page) {
   try {
     await new Promise(resolve => setTimeout(resolve, 1000));
