@@ -317,6 +317,19 @@ async function checkLoginSuccess(page) {
 //       return { browser, page: null }; // Возвращаем browser и null вместо page в случае ошибки
 //   }
 // }
+// Функция для генерации случайной задержки
+const randomDelay = (min, max) => {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+};
+
+// Функция для эмуляции человеческого ввода
+const typeHumanLike = async (page, selector, text) => {
+  await page.focus(selector);
+  for (let i = 0; i < text.length; i++) {
+      await page.keyboard.type(text[i]);
+      await page.waitForTimeout(randomDelay(50, 150));
+  }
+};
 
 export  async function register() {
   const browser = await puppeteer.launch({
