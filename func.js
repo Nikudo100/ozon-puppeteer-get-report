@@ -320,29 +320,23 @@ async function checkLoginSuccess(page) {
 
 export  async function register() {
   const browser = await puppeteer.launch({
-      headless: false,
-      args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-infobars',
-          '--window-position=0,0',
-          '--ignore-certifcate-errors',
-          '--ignore-certifcate-errors-spki-list',
-          '--disable-blink-features=AutomationControlled',
-          `--window-size=${1920},${1080}`,
-          '--disable-accelerated-2d-canvas',
-          '--hide-scrollbars',
-          '--disable-notifications',
-          '--disable-extensions',
-          '--force-device-scale-factor=1',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process',
-          '--disable-site-isolation-trials',
-      ],
-      defaultViewport: {
-          width: 1920,
-          height: 1080
-      }
+    headless: 'new',
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-infobars',
+        '--window-position=0,0',
+        '--ignore-certificate-errors',
+        '--ignore-certificate-errors-spki-list',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-accelerated-2d-canvas',
+        '--hide-scrollbars',
+        '--disable-notifications',
+        '--disable-extensions',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-site-isolation-trials',
+    ],
   });
 
   const page = await browser.newPage();
