@@ -318,7 +318,7 @@ async function checkLoginSuccess(page) {
 //   }
 // }
 
-async function register() {
+export  async function register() {
   const browser = await puppeteer.launch({
       headless: false,
       args: [
