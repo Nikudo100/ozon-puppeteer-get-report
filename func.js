@@ -1,41 +1,359 @@
 // func.js
-import puppeteer from 'puppeteer';
 import iconv from 'iconv-lite';
 import fetch from 'node-fetch';
+import dayjs from 'dayjs';
 import { SocksProxyAgent } from 'socks-proxy-agent';
+import XLSX from 'xlsx'
+import puppeteer from 'puppeteer';
+import readline from 'readline';
 import fs from 'fs';
 import path from 'path';
-import XLSX from 'xlsx'
-import dayjs from 'dayjs';
 
-// инициализация без прокси, остальные с прокси
-export async function initializeBrowser(proxy= null) {
-  const downloadPath = path.resolve('./downloads');
-  if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
+// Path to cookies file
+// const COOKIES_FILE = new URL('cookies.json', import.meta.url).pathname;
+const COOKIES_FILE = path.resolve('./cookies.json');
 
-  const browser = await puppeteer.launch({
-    executablePath: puppeteer.executablePath(),
-    headless: true,
-    defaultViewport: null,
-    args: [
-      '--window-size=1400,800',
-      '--disable-dev-shm-usage',
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-gpu'
-    ]
-  });
 
-  const [page] = await browser.pages();
+// Функция для получения кода или данных из консоли
+function askForInput(message) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
 
-  const client = await page.target().createCDPSession();
-  await client.send('Page.setDownloadBehavior', {
-    behavior: 'allow',
-    downloadPath: downloadPath,
-  });
-
-  return { browser, page };
+    return new Promise(resolve => {
+        rl.question(message, (input) => {
+            rl.close();
+            resolve(input);
+        });
+    });
 }
+
+// Функция для проверки наличия и загрузки куков
+async function loadCookies() {
+  try {
+        if (fs.existsSync(COOKIES_FILE)) {
+            const cookiesString = fs.readFileSync(COOKIES_FILE, 'utf8');
+            const cookies = JSON.parse(cookiesString);
+            console.log(`Загружено ${cookies.length} куки из файла`);
+            return cookies;
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке куков:', error.message);
+    }
+    console.log('Файл с куками не найден или поврежден');
+    return null;
+}
+
+// Функция для сохранения куков
+async function saveCookies(page) {
+    try {
+        const cookies = await page.cookies();
+        fs.writeFileSync(COOKIES_FILE, JSON.stringify(cookies, null, 2));
+        console.log(`Сохранено ${cookies.length} куки в файл ${COOKIES_FILE}`);
+    } catch (error) {
+        console.error('Ошибка при сохранении куков:', error.message);
+    }
+}
+
+// Функция для проверки успешности входа
+async function checkLoginSuccess(page) {
+    try {
+        // Проверяем наличие текста "Ваш единый аккаунт на Ozon"
+        const accountText = await page.evaluate(() => {
+            const elements = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, div, span'));
+            for (const el of elements) {
+                if (el.textContent && el.textContent.includes('Ваш единый аккаунт на Ozon')) {
+                    return el.textContent;
+                }
+            }
+            return '';
+        });
+        
+        if (accountText) {
+            console.log('Успешный вход! Обнаружен текст:', accountText);
+            return true;
+        }
+        
+        console.log('Текст "Ваш единый аккаунт на Ozon" не найден');
+        return false;
+    } catch (error) {
+        console.error('Ошибка при проверке входа:', error.message);
+        return false;
+    }
+}
+
+export async function register() {
+  const browser = await puppeteer.launch({
+      headless: true,
+      defaultViewport: null,
+      args: [
+          '--start-maximized',
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-infobars',
+          '--window-position=0,0',
+          '--ignore-certifcate-errors',
+          '--ignore-certifcate-errors-spki-list',
+          '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ]
+  });
+
+  try {
+      const page = await browser.newPage();
+      
+      // Эмуляция реального браузера
+      await page.setExtraHTTPHeaders({
+          'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'
+      });
+
+      await page.evaluateOnNewDocument(() => {
+          Object.defineProperty(navigator, 'webdriver', {
+              get: () => false
+          });
+      });
+
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+      // Загружаем куки, если они есть
+      const cookies = await loadCookies();
+      if (cookies) {
+          await page.setCookie(...cookies);
+          console.log('Куки успешно установлены');
+          
+          // Переходим на страницу и проверяем, авторизованы ли мы
+          await page.goto('https://www.ozon.ru/ozonid', {
+              waitUntil: 'networkidle0',
+              timeout: 30000
+          });
+          
+          // Проверяем успешность входа
+          const isLoggedIn = await checkLoginSuccess(page);
+          if (isLoggedIn) {
+              console.log('Вход выполнен успешно с использованием сохраненных куков');
+              // Обновляем куки после успешного входа
+              await delay(1000); // Ждем секунду перед сохранением куков
+              await saveCookies(page);
+              return { browser, page }; // Возвращаем объекты для дальнейшей работы
+          } else {
+              console.log('Не удалось войти с использованием сохраненных куков, выполняем полную авторизацию');
+          }
+      }
+
+      // Если куки не помогли или их нет, выполняем полную авторизацию
+      await page.goto('https://id.ozon.ru/ozonid', {
+          waitUntil: 'networkidle0',
+          timeout: 30000
+      });
+
+      // Ждем загрузки селектора страны и кликаем
+      await page.waitForSelector('.d45_3_2-a');
+      await delay(Math.random() * 1000 + 500);
+      await page.click('.d45_3_2-a');
+      
+      // Выбираем Россию (+7)
+      await page.waitForSelector('div[role="listbox"]');
+      await page.evaluate(() => {
+          const items = Array.from(document.querySelectorAll('div[role="option"]'));
+          const russia = items.find(item => item.textContent.includes('+7'));
+          if (russia) russia.click();
+      });
+      await delay(Math.random() * 1000 + 500);
+      
+      // Ждем появления поля ввода телефона и кликаем на него
+      await page.waitForSelector('input[type="tel"][name="autocomplete"]');
+      await page.click('input[type="tel"][name="autocomplete"]');
+      await delay(Math.random() * 300 + 200);
+
+      // Вводим номер телефона по частям, как человек
+      const phoneNumber = '953 10 10 521';
+      const parts = phoneNumber.split(' ');
+      for (const part of parts) {
+          await page.keyboard.type(part, {delay: Math.random() * 100 + 50});
+          await delay(Math.random() * 200 + 100);
+      }
+
+      await delay(Math.random() * 500 + 300);
+      
+      // Нажимаем кнопку "Войти"
+      await page.click('button[type="submit"]');
+      await delay(Math.random() * 1000 + 500);
+
+      // Проверяем наличие QR-кода и обходим его при необходимости
+      try {
+          await page.waitForSelector('.bq02_4_0-a', { timeout: 5000 });
+          console.log('Обнаружен QR-код, нажимаем "Войти другим способом"');
+          await page.click('.ach4_47');
+          await delay(Math.random() * 1000 + 500);
+      } catch (e) {
+          console.log('QR-код не обнаружен, продолжаем...');
+      }
+
+      // Проверяем, перенаправлены ли мы на страницу входа по почте
+      try {
+          const emailLoginText = await page.evaluate(() => {
+              const headline = document.querySelector('.tsHeadline600Large');
+              return headline ? headline.textContent : '';
+          });
+
+          if (emailLoginText.includes('Войдите по почте')) {
+              console.log('Перенаправлено на вход по почте');
+              
+              // Запрашиваем почту из консоли
+              const email = await askForInput('Введите почту: ');
+              
+              // Ждем появления поля для ввода почты и вводим её
+              await page.waitForSelector('input[type="email"][name="email"]');
+              await page.click('input[type="email"][name="email"]');
+              await delay(Math.random() * 300 + 200);
+              
+              // Вводим почту с задержками между символами
+              for (let i = 0; i < email.length; i++) {
+                  await page.keyboard.type(email[i], {delay: Math.random() * 100 + 50});
+                  if (i % 3 === 0) await delay(Math.random() * 100 + 50);
+              }
+              
+              await delay(Math.random() * 500 + 300);
+              
+              // Нажимаем кнопку "Войти" для отправки кода на почту
+              await page.click('button[type="submit"]');
+              await delay(Math.random() * 1000 + 500);
+          }
+      } catch (e) {
+          console.log('Страница входа по почте не обнаружена:', e.message);
+      }
+
+      // Запрашиваем код из консоли для телефона или почты
+      let codeInputSelector;
+      
+      // Проверяем, какое поле для ввода кода появилось
+      const otpSelector = 'input[type="number"][name="otp"]';
+      const extraOtpSelector = 'input[type="number"][name="extraOtp"]';
+      
+      try {
+          await Promise.race([
+              page.waitForSelector(otpSelector, { timeout: 5000 }),
+              page.waitForSelector(extraOtpSelector, { timeout: 5000 })
+          ]);
+          
+          // Определяем, какое поле появилось
+          const hasOtp = await page.$(otpSelector) !== null;
+          const hasExtraOtp = await page.$(extraOtpSelector) !== null;
+          
+          if (hasOtp) {
+              console.log('Обнаружено поле для ввода кода из СМС');
+              codeInputSelector = otpSelector;
+              const phoneCode = await askForInput('Введите код из СМС: ');
+              await page.type(codeInputSelector, phoneCode, {delay: Math.random() * 100 + 50});
+          } else if (hasExtraOtp) {
+              console.log('Обнаружено поле для ввода кода из почты');
+              codeInputSelector = extraOtpSelector;
+              const emailCode = await askForInput('Введите код из почты: ');
+              await page.type(codeInputSelector, emailCode, {delay: Math.random() * 100 + 50});
+          }
+          
+          await delay(Math.random() * 1000 + 500);
+      } catch (e) {
+          console.log('Не удалось обнаружить поле для ввода кода:', e.message);
+      }
+
+      // Проверяем, появилась ли страница с подтверждением почты
+      try {
+          // Ждем появления текста о подтверждении почты
+          await page.waitForSelector('.tsHeadline600Large', { timeout: 10000 });
+          const headlineText = await page.evaluate(() => {
+              const headline = document.querySelector('.tsHeadline600Large');
+              return headline ? headline.textContent : '';
+          });
+
+          if (headlineText.includes('Давайте убедимся, что это вы')) {
+              console.log('Требуется подтверждение почты');
+              
+              // Нажимаем кнопку "Войти" для отправки кода на почту
+              await page.click('button[type="submit"]');
+              await delay(Math.random() * 1000 + 500);
+              
+              // Ждем появления поля для ввода кода с почты
+              await page.waitForSelector('input[type="number"][name="extraOtp"]');
+              
+              // Запрашиваем код из консоли для почты
+              const emailCode = await askForInput('Введите код из почты: ');
+              
+              // Вводим код с почты
+              await page.type('input[type="number"][name="extraOtp"]', emailCode, {delay: Math.random() * 100 + 50});
+              await delay(Math.random() * 1000 + 500);
+          }
+      } catch (e) {
+          console.log('Подтверждение почты не требуется или произошла ошибка:', e.message);
+      }
+
+      // Ждем завершения авторизации и перенаправления
+      await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(e => {
+          console.log('Ожидание перенаправления завершено с ошибкой:', e.message);
+      });
+      
+      // Переходим на страницу ozonid для проверки успешности входа
+      await page.goto('https://www.ozon.ru/ozonid', {
+          waitUntil: 'networkidle0',
+          timeout: 30000
+      });
+      
+      // Проверяем успешность входа
+      const isLoggedIn = await checkLoginSuccess(page);
+      if (isLoggedIn) {
+          console.log('Авторизация завершена успешно!');
+          // Ждем секунду перед сохранением куков
+          await delay(1000);
+          // Сохраняем куки для последующего использования
+          await saveCookies(page);
+      } else {
+          console.log('Авторизация не удалась, не обнаружен текст "Ваш единый аккаунт на Ozon"');
+      }
+
+      return { browser, page }; // Возвращаем объекты для дальнейшей работы
+
+  } catch (error) {
+      console.error('Произошла ошибка:', error);
+      return { browser, page: null }; // Возвращаем browser и null вместо page в случае ошибки
+  }
+}
+
+
+
+
+
+
+// // инициализация без прокси, остальные с прокси
+// export async function initializeBrowser(proxy= null) {
+//   const downloadPath = path.resolve('./downloads');
+//   if (!fs.existsSync(downloadPath)) fs.mkdirSync(downloadPath);
+
+//   const browser = await puppeteer.launch({
+//     executablePath: puppeteer.executablePath(),
+//     headless: false,
+//     defaultViewport: null,
+//     args: [
+//       '--window-size=1400,800',
+//       '--disable-dev-shm-usage',
+//       '--no-sandbox',
+//       '--disable-setuid-sandbox',
+//       '--disable-gpu'
+//     ]
+//   });
+
+//   const [page] = await browser.pages();
+
+//   const client = await page.target().createCDPSession();
+//   await client.send('Page.setDownloadBehavior', {
+//     behavior: 'allow',
+//     downloadPath: downloadPath,
+//   });
+
+//   return { browser, page };
+// }
+
+
+
 
 // export async function initializeBrowser(proxy) {
 //   const downloadPath = path.resolve('./downloads');

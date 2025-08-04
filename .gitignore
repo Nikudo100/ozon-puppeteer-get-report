@@ -1,7 +1,11 @@
 # Node modules
 node_modules/
 
-# Куки, временные и пользовательские файлы
-# cookies.json
-# downloads/
-# parsed.json
+# Debug files
+debug/
+
+# Downloaded files
+downloads/
+
+# Cookie files
+cookies.json

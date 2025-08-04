@@ -2,14 +2,14 @@ import path from 'path';
 import {
   pressAndSaveFile,
   clickUntilPopoverOpens,
-  handleCookies,
   closePopup,
-  initializeBrowser,
-  switchKabinet,
+  // initializeBrowser,
+  // switchKabinet,
   checkAndSwitchCabinet,
   chekKabinet,
   parseExcelToJson,
-  checkSocks5Proxy
+  // checkSocks5Proxy,
+  register
 } from './func.js'; // добавлен .js
 // 🔄 Список кабинетов
 const cabinets = ['DiDesign', 'Stik.Store'];
@@ -32,10 +32,17 @@ const proxy = {
 const COOKIE_PATH = path.resolve('./cookies.json');
 
 (async () => {
-  const { browser, page } = await initializeBrowser(proxy);
+  // const { browser, page } = await initializeBrowser(proxy);
   // await new Promise(resolve => setTimeout(resolve, 1000));
-  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
-  await handleCookies(page, COOKIE_PATH);
+  // await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0');
+  // await handleCookies(page, COOKIE_PATH);
+
+  await new Promise((resolve) => setTimeout(resolve, 1000)); // задержка 1 секунда
+  // Регистрация нового аккаунта
+  const { browser, page } = await register();
+  
+  await new Promise((resolve) => setTimeout(resolve, 3000)); // задержка 1 секунда
+  
   await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
     waitUntil: 'networkidle2',
   });
@@ -56,8 +63,8 @@ const COOKIE_PATH = path.resolve('./cookies.json');
 
   await pressAndSaveFile(page, targetName);
 
-  console.log('✅ Готово. Закрываем браузер...');
-  await browser.close();
+  // console.log('✅ Готово. Закрываем браузер...');
+  // await browser.close();
 
   console.log('✅ Парсим файлы...');
   parseExcelToJson();
