@@ -940,6 +940,12 @@ export async function pressAndSaveFile(page, kabinetTitle) {
     await radioByProducts.click();
     console.log('✅ Выбран вариант "По товарам"');
 
+    // Configure download behavior
+    await page._client.send('Page.setDownloadBehavior', {
+      behavior: 'allow',
+      downloadPath: downloadPath
+    });
+
     const buttons = await page.$$('.index_downloadReportConfirmButton_2P5UK');
     let foundDownloadButton = false;
 
@@ -959,45 +965,75 @@ export async function pressAndSaveFile(page, kabinetTitle) {
 
     console.log('⏳ Ожидаем завершения загрузки...');
 
-    // Ждём появления нового файла
+    // Wait for download to complete with improved file checking
     const waitForDownload = async () => {
-      const timeout = Date.now() + 30000; // 30 сек таймаут
+      const timeout = Date.now() + 60000; // Increased timeout to 60 seconds
+      
       while (Date.now() < timeout) {
         const currentFiles = fs.readdirSync(downloadPath);
-        const newFiles = currentFiles.filter(file => file.endsWith('.xlsx') && !beforeFiles.has(file));
+        const newFiles = currentFiles.filter(file => {
+          // Check for both .xlsx and .xlsx.crdownload files
+          return (file.endsWith('.xlsx') || file.endsWith('.crdownload')) && !beforeFiles.has(file);
+        });
 
         if (newFiles.length > 0) {
-          const downloadedFileName = newFiles[0];
-          const fullPath = path.join(downloadPath, downloadedFileName);
+          const downloadingFile = newFiles[0];
+          const fullPath = path.join(downloadPath, downloadingFile);
 
-          // Проверяем, доступен ли файл для записи
-          try {
-            fs.accessSync(fullPath, fs.constants.R_OK | fs.constants.W_OK);
-            return downloadedFileName;
-          } catch (e) {
-            // Файл занят, подождём
+          // If file is still downloading (has .crdownload extension)
+          if (downloadingFile.endsWith('.crdownload')) {
+            await new Promise(res => setTimeout(res, 1000));
+            continue;
+          }
+
+          // Wait for file to be fully written
+          let retries = 10;
+          while (retries > 0) {
+            try {
+              const stats = fs.statSync(fullPath);
+              if (stats.size > 0) {
+                // Try to open file to ensure it's not locked
+                const fd = fs.openSync(fullPath, 'r');
+                fs.closeSync(fd);
+                return downloadingFile;
+              }
+            } catch (e) {
+              // File might still be locked
+            }
+            await new Promise(res => setTimeout(res, 1000));
+            retries--;
           }
         }
-
-        await new Promise(res => setTimeout(res, 500));
+        await new Promise(res => setTimeout(res, 1000));
       }
-      throw new Error('Файл так и не стал доступен для переименования');
+      throw new Error('Превышено время ожидания загрузки файла');
     };
 
     const downloadedFileName = await waitForDownload();
+    
+    // Add delay before renaming
+    await new Promise(res => setTimeout(res, 2000));
 
     const fileExt = path.extname(downloadedFileName);
     const baseName = downloadedFileName.replace(fileExt, '');
     const newFileName = `${baseName}_${newkabinetTitle}${fileExt}`;
 
-    fs.renameSync(
-      path.join(downloadPath, downloadedFileName),
-      path.join(downloadPath, newFileName)
-    );
+    const oldPath = path.join(downloadPath, downloadedFileName);
+    const newPath = path.join(downloadPath, newFileName);
 
-    console.log('✅ Отчёт успешно загружен:', newFileName);
+    // Ensure old file exists and is accessible before renaming
+    try {
+      await fs.promises.access(oldPath, fs.constants.R_OK | fs.constants.W_OK);
+      await fs.promises.rename(oldPath, newPath);
+      console.log('✅ Отчёт успешно загружен и переименован:', newFileName);
+    } catch (error) {
+      console.error('Ошибка при переименовании файла:', error);
+      throw error;
+    }
+
   } catch (err) {
     console.log('❌ Ошибка при загрузке отчёта:', err.message);
+    throw err;
   }
 }
 

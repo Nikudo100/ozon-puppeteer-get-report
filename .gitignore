@@ -3,9 +3,13 @@ node_modules/
 
 # Debug files
 debug/
+debug/*
+debug/**/*
 
 # Downloaded files
 downloads/
+downloads/*
+downloads/**/*
 
 # Cookie files
 cookies.json
