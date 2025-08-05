@@ -142,7 +142,7 @@ export async function register() {
           });
           
           // Проверяем успешность входа
-          isLoggedIn = await checkLoginSuccess(page);
+          let isLoggedIn = await checkLoginSuccess(page);
           if (isLoggedIn) {
               console.log('Вход выполнен успешно с использованием сохраненных куков');
               // Обновляем куки после успешного входа
