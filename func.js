@@ -106,6 +106,9 @@ export async function register() {
       ]
   });
 
+  const browserWSEndpoint = browser.wsEndpoint();
+  console.log('Запущен Chromium из:', browser.process().spawnfile);
+
   try {
       const page = await browser.newPage();
       
