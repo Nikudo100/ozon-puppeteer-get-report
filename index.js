@@ -63,8 +63,8 @@ const COOKIE_PATH = path.resolve('./cookies.json');
 
   await pressAndSaveFile(page, targetName);
 
-  // console.log('✅ Готово. Закрываем браузер...');
-  // await browser.close();
+  console.log('✅ Готово. Закрываем браузер...');
+  await browser.close();
 
   console.log('✅ Парсим файлы...');
   parseExcelToJson();

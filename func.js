@@ -82,11 +82,10 @@ async function checkLoginSuccess(page) {
         return false;
     }
 }
-
 export async function register() {
   const browser = await puppeteer.launch({
       headless: 'new',
-      executablePath: '/snap/bin/chromium',
+      ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
       args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
