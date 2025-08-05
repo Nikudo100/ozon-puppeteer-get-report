@@ -110,7 +110,7 @@ export async function register() {
 
   const browserWSEndpoint = browser.wsEndpoint();
   console.log('Запущен Chromium из:', browser.process().spawnfile);
-
+  let isLoggedIn = false;
   try {
       const page = await browser.newPage();
       
@@ -129,6 +129,7 @@ export async function register() {
 
       // Загружаем куки, если они есть
       const cookies = await loadCookies();
+      
       if (cookies) {
           await page.setCookie(...cookies);
           console.log('Куки успешно установлены');
@@ -141,7 +142,7 @@ export async function register() {
           });
           
           // Проверяем успешность входа
-          let isLoggedIn = await checkLoginSuccess(page);
+          isLoggedIn = await checkLoginSuccess(page);
           if (isLoggedIn) {
               console.log('Вход выполнен успешно с использованием сохраненных куков');
               // Обновляем куки после успешного входа
@@ -161,7 +162,7 @@ export async function register() {
           waitUntil: 'networkidle0',
           timeout: 30000
       });
-      
+
       await page.screenshot({ path: './debug/waitForSelectorLoging.png' });
       isLoggedIn = await checkLoginSuccess(page);
       if (isLoggedIn) {
