@@ -940,8 +940,9 @@ export async function pressAndSaveFile(page, kabinetTitle) {
     await radioByProducts.click();
     console.log('✅ Выбран вариант "По товарам"');
 
-    // Configure download behavior
-    await page._client.send('Page.setDownloadBehavior', {
+    // Configure download behavior using CDP session
+    const client = await page.createCDPSession();
+    await client.send('Page.setDownloadBehavior', {
       behavior: 'allow',
       downloadPath: downloadPath
     });
