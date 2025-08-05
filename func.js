@@ -11,7 +11,6 @@ import path from 'path';
 
 // Path to cookies file
 // const COOKIES_FILE = new URL('cookies.json', import.meta.url).pathname;
-const COOKIES_FILE = path.resolve('./cookies.json');
 
 
 // Функция для получения кода или данных из консоли
@@ -31,6 +30,8 @@ function askForInput(message) {
 
 // Функция для проверки наличия и загрузки куков
 async function loadCookies() {
+const COOKIES_FILE = path.resolve('./cookies.json');
+
   try {
         if (fs.existsSync(COOKIES_FILE)) {
             const cookiesString = fs.readFileSync(COOKIES_FILE, 'utf8');
