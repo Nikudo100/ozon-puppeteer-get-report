@@ -60,6 +60,7 @@ export async function saveCookies(page) {
 
 // Функция для проверки успешности входа
 async function checkLoginSuccess(page) {
+  await page.screenshot({ path: './debug/checkLoginSuccess.png' });
     try {
         // Проверяем наличие текста "Ваш единый аккаунт на Ozon"
         const accountText = await page.evaluate(() => {
@@ -134,7 +135,7 @@ export async function register() {
           
           // Переходим на страницу и проверяем, авторизованы ли мы
           await page.goto('https://www.ozon.ru/ozonid', {
-              waitUntil: 'networkidle0',
+              // waitUntil: 'networkidle0',
               timeout: 30000
           });
           
@@ -156,7 +157,7 @@ export async function register() {
           waitUntil: 'networkidle0',
           timeout: 30000
       });
-
+      await page.screenshot({ path: './debug/waitForSelectorLoging.png' });
       // Ждем загрузки селектора страны и кликаем
       await page.waitForSelector('.d45_3_2-a');
       await delay(Math.random() * 1000 + 500);
