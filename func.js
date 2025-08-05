@@ -311,6 +311,8 @@ export async function register() {
           timeout: 30000
       });
       
+       console.log('ждем 4 сек');
+      await new Promise((resolve) => setTimeout(resolve, 4000)); // задержка 3 секунда
       // Проверяем успешность входа
       const isLoggedIn = await checkLoginSuccess(page);
       if (isLoggedIn) {
