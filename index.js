@@ -56,12 +56,14 @@ const COOKIE_PATH = path.resolve('./cookies.json');
   await pressAndSaveFile(page, kabinetTitle);
   // Get the target cabinet name that is different from current one
   const targetName = cabinets.find(cabinet => cabinet !== kabinetTitle);
-
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
   // переключаем кабинеты
   await checkAndSwitchCabinet(page, targetName);
-
+  console.log('Ждем 2');
+  await delay(2000);
   await clickUntilPopoverOpens(page);
-
+  console.log('Ждем 2');
+  await delay(2000);
   await pressAndSaveFile(page, targetName);
   
   await saveCookies(page);
