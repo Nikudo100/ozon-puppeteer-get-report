@@ -86,6 +86,7 @@ async function checkLoginSuccess(page) {
 export async function register() {
   const browser = await puppeteer.launch({
       headless: 'new',
+      executablePath: '/usr/bin/chromium',
       args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
