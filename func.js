@@ -110,8 +110,8 @@ export async function register() {
 
   const browserWSEndpoint = browser.wsEndpoint();
   console.log('Запущен Chromium из:', browser.process().spawnfile);
-  let isLoggedIn = false;
   try {
+      let isLoggedIn = false;
       const page = await browser.newPage();
       
       // Эмуляция реального браузера
@@ -142,7 +142,7 @@ export async function register() {
           });
           
           // Проверяем успешность входа
-          let isLoggedIn = await checkLoginSuccess(page);
+          isLoggedIn = await checkLoginSuccess(page);
           if (isLoggedIn) {
               console.log('Вход выполнен успешно с использованием сохраненных куков');
               // Обновляем куки после успешного входа
@@ -333,7 +333,7 @@ export async function register() {
       
    
       // Проверяем успешность входа
-      const isLoggedIn = await checkLoginSuccess(page);
+      isLoggedIn = await checkLoginSuccess(page);
       if (isLoggedIn) {
           console.log('Авторизация завершена успешно!');
           // Ждем секунду перед сохранением куков
