@@ -66,7 +66,7 @@ const COOKIE_PATH = path.resolve('./cookies.json');
   console.log('Ждем 2',targetName);
   await delay(2000);
   await pressAndSaveFile(page, targetName);
-  
+
   await saveCookies(page);
 
   console.log('✅ Готово. Закрываем браузер...');
