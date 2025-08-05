@@ -132,7 +132,7 @@ export async function register() {
       if (cookies) {
           await page.setCookie(...cookies);
           console.log('Куки успешно установлены');
-          console.log('Ждем секунду после сохранением куков');
+          console.log('Ждем 4 секунду после сохранением куков');
           await delay(4000); // Ждем секунду перед сохранением куков
           // Переходим на страницу и проверяем, авторизованы ли мы
           await page.goto('https://www.ozon.ru/ozonid', {
@@ -141,7 +141,7 @@ export async function register() {
           });
           
           // Проверяем успешность входа
-          const isLoggedIn = await checkLoginSuccess(page);
+          let isLoggedIn = await checkLoginSuccess(page);
           if (isLoggedIn) {
               console.log('Вход выполнен успешно с использованием сохраненных куков');
               // Обновляем куки после успешного входа
@@ -161,7 +161,21 @@ export async function register() {
           waitUntil: 'networkidle0',
           timeout: 30000
       });
+      
       await page.screenshot({ path: './debug/waitForSelectorLoging.png' });
+      isLoggedIn = await checkLoginSuccess(page);
+      if (isLoggedIn) {
+          console.log('Вход выполнен успешно с использованием сохраненных куков');
+          // Обновляем куки после успешного входа
+        
+          await saveCookies(page);
+          console.log('Ждем 2 секунду после сохранением куков');
+          await delay(2000); // Ждем секунду перед сохранением куков
+          return { browser, page }; // Возвращаем объекты для дальнейшей работы
+      } else {
+          console.log('Не удалось войти с использованием сохраненных куков, выполняем полную авторизацию');
+      }
+
       // Ждем загрузки селектора страны и кликаем
       await page.waitForSelector('.d45_3_2-a');
       await delay(Math.random() * 1000 + 500);
