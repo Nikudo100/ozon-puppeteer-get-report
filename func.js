@@ -915,7 +915,7 @@ export async function clickUntilPopoverOpens(page) {
     innerHTML: el.innerHTML
   }));
   console.log('Popover element details: 1', elementDetails);
-
+  await page.screenshot({ path: `./debug/before-${target}.png` });
   while (ariaExpanded !== 'true') {
     await target.click();
     let ariaExpanded = await target.evaluate(el => el.getAttribute('aria-expanded'));
