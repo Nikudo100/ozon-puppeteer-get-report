@@ -60,11 +60,12 @@ const COOKIE_PATH = path.resolve('./cookies.json');
   // переключаем кабинеты
   console.log('targetName:',targetName);
   await checkAndSwitchCabinet(page, targetName);
+
   console.log('Ждем 2',targetName);
   await delay(2000);
+  await closePopup(page);
   await clickUntilPopoverOpens(page);
-  console.log('Ждем 2',targetName);
-  await delay(2000);
+
   await pressAndSaveFile(page, targetName);
 
   await saveCookies(page);

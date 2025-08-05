@@ -920,6 +920,7 @@ export async function clickUntilPopoverOpens(page) {
     await target.click();
     let ariaExpanded = await target.evaluate(el => el.getAttribute('aria-expanded'));
     if (ariaExpanded === 'true') {
+      console.log('✅ Попап открыт (aria-expanded="true")');
       return;
     }
   }
