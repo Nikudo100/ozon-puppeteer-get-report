@@ -13,3 +13,4 @@ downloads/**/*
 
 # Cookie files
 cookies.json
+.env
