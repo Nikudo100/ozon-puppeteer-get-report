@@ -132,7 +132,8 @@ export async function register() {
       if (cookies) {
           await page.setCookie(...cookies);
           console.log('Куки успешно установлены');
-          
+          console.log('Ждем секунду после сохранением куков');
+          await delay(4000); // Ждем секунду перед сохранением куков
           // Переходим на страницу и проверяем, авторизованы ли мы
           await page.goto('https://www.ozon.ru/ozonid', {
               // waitUntil: 'networkidle0',
@@ -144,11 +145,10 @@ export async function register() {
           if (isLoggedIn) {
               console.log('Вход выполнен успешно с использованием сохраненных куков');
               // Обновляем куки после успешного входа
-              console.log('Ждем секунду перед сохранением куков');
-              await delay(1000); // Ждем секунду перед сохранением куков
+            
               await saveCookies(page);
-              console.log('Ждем 4 секунду после сохранением куков');
-              await delay(4000); // Ждем секунду перед сохранением куков
+              console.log('Ждем 2 секунду после сохранением куков');
+              await delay(2000); // Ждем секунду перед сохранением куков
               return { browser, page }; // Возвращаем объекты для дальнейшей работы
           } else {
               console.log('Не удалось войти с использованием сохраненных куков, выполняем полную авторизацию');
