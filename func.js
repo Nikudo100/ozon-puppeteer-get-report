@@ -301,7 +301,8 @@ export async function register() {
       await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(e => {
           console.log('Ожидание перенаправления завершено с ошибкой:', e.message);
       });
-      
+      console.log('ждем 3 сек');
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // задержка 3 секунда
       // Переходим на страницу ozonid для проверки успешности входа
       await page.goto('https://www.ozon.ru/ozonid', {
           waitUntil: 'networkidle0',

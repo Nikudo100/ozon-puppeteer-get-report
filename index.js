@@ -41,7 +41,7 @@ const COOKIE_PATH = path.resolve('./cookies.json');
   // Регистрация нового аккаунта
   const { browser, page } = await register();
   
-  await new Promise((resolve) => setTimeout(resolve, 3000)); // задержка 1 секунда
+  await new Promise((resolve) => setTimeout(resolve, 3000)); // задержка 3 секунда
   
   await page.goto('https://seller.ozon.ru/app/finances/warehousing-cost', {
     waitUntil: 'networkidle2',
