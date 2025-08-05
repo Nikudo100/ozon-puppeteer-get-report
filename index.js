@@ -9,7 +9,8 @@ import {
   chekKabinet,
   parseExcelToJson,
   // checkSocks5Proxy,
-  register
+  register,
+  saveCookies
 } from './func.js'; // добавлен .js
 // 🔄 Список кабинетов
 const cabinets = ['DiDesign', 'Stik.Store'];
@@ -62,6 +63,8 @@ const COOKIE_PATH = path.resolve('./cookies.json');
   await clickUntilPopoverOpens(page);
 
   await pressAndSaveFile(page, targetName);
+  
+  await saveCookies(page);
 
   console.log('✅ Готово. Закрываем браузер...');
   await browser.close();

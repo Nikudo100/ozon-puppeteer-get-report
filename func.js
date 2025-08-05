@@ -47,7 +47,8 @@ const COOKIES_FILE = path.resolve('./cookies.json');
 }
 
 // Функция для сохранения куков
-async function saveCookies(page) {
+export async function saveCookies(page) {
+  const COOKIES_FILE = path.resolve('./cookies.json');
     try {
         const cookies = await page.cookies();
         fs.writeFileSync(COOKIES_FILE, JSON.stringify(cookies, null, 2));
@@ -301,8 +302,8 @@ export async function register() {
       await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(e => {
           console.log('Ожидание перенаправления завершено с ошибкой:', e.message);
       });
-      console.log('ждем 3 сек');
-      await new Promise((resolve) => setTimeout(resolve, 3000)); // задержка 3 секунда
+      // console.log('ждем 3 сек');
+      // await new Promise((resolve) => setTimeout(resolve, 3000)); // задержка 3 секунда
       // Переходим на страницу ozonid для проверки успешности входа
       await page.goto('https://www.ozon.ru/ozonid', {
           waitUntil: 'networkidle0',
