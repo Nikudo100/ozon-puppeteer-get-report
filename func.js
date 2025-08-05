@@ -144,14 +144,18 @@ export async function register() {
           if (isLoggedIn) {
               console.log('Вход выполнен успешно с использованием сохраненных куков');
               // Обновляем куки после успешного входа
+              console.log('Ждем секунду перед сохранением куков');
               await delay(1000); // Ждем секунду перед сохранением куков
               await saveCookies(page);
+              console.log('Ждем 4 секунду после сохранением куков');
+              await delay(4000); // Ждем секунду перед сохранением куков
               return { browser, page }; // Возвращаем объекты для дальнейшей работы
           } else {
               console.log('Не удалось войти с использованием сохраненных куков, выполняем полную авторизацию');
           }
       }
-
+      console.log('ждем 4 сек');
+      await new Promise((resolve) => setTimeout(resolve, 4000)); // задержка 3 секунда
       // Если куки не помогли или их нет, выполняем полную авторизацию
       await page.goto('https://id.ozon.ru/ozonid', {
           waitUntil: 'networkidle0',
@@ -303,16 +307,16 @@ export async function register() {
       await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(e => {
           console.log('Ожидание перенаправления завершено с ошибкой:', e.message);
       });
-      // console.log('ждем 3 сек');
-      // await new Promise((resolve) => setTimeout(resolve, 3000)); // задержка 3 секунда
+
+      console.log('ждем 3 сек');
+      await new Promise((resolve) => setTimeout(resolve, 3000)); // задержка 3 секунда
       // Переходим на страницу ozonid для проверки успешности входа
       await page.goto('https://www.ozon.ru/ozonid', {
-          waitUntil: 'networkidle0',
-          timeout: 30000
+          // waitUntil: 'networkidle0',
+          // timeout: 30000
       });
       
-       console.log('ждем 4 сек');
-      await new Promise((resolve) => setTimeout(resolve, 4000)); // задержка 3 секунда
+   
       // Проверяем успешность входа
       const isLoggedIn = await checkLoginSuccess(page);
       if (isLoggedIn) {
@@ -333,19 +337,19 @@ export async function register() {
   }
 }
 
-// Функция для генерации случайной задержки
-const randomDelay = (min, max) => {
-  return Math.floor(Math.random() * (max - min + 1) + min);
-};
+// // Функция для генерации случайной задержки
+// const randomDelay = (min, max) => {
+//   return Math.floor(Math.random() * (max - min + 1) + min);
+// };
 
-// Функция для эмуляции человеческого ввода
-const typeHumanLike = async (page, selector, text) => {
-  await page.focus(selector);
-  for (let i = 0; i < text.length; i++) {
-      await page.keyboard.type(text[i]);
-      await page.waitForTimeout(randomDelay(50, 150));
-  }
-};
+// // Функция для эмуляции человеческого ввода
+// const typeHumanLike = async (page, selector, text) => {
+//   await page.focus(selector);
+//   for (let i = 0; i < text.length; i++) {
+//       await page.keyboard.type(text[i]);
+//       await page.waitForTimeout(randomDelay(50, 150));
+//   }
+// };
 
 // export  async function register() {
 //   const browser = await puppeteer.launch({
